@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block title %}Keluar Barang{% endblock %}
+
+{% block content %}
+<h1>Keluar Barang</h1>
+<div class="mb-3">
+    <a href="{% url 'keluar_create' %}" class="btn btn-primary">Add Keluar</a>
+    <a href="{% url 'keluar_bulk_create' %}" class="btn btn-secondary">Bulk Upload</a>
+</div>
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>ID Keluar</th>
+                <th>Tanggal Keluar</th>
+                <th>Total Quantity</th>
+                <th>Keterangan</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for keluar in keluars %}
+            <tr>
+                <td>{{ keluar.id_keluar }}</td>
+                <td>{{ keluar.tanggal_keluar }}</td>
+                <td>{{ keluar.total_quantity }}</td>
+                <td>{{ keluar.keterangan }}</td>
+                <td>
+                    <a href="{% url 'keluar_detail_list' keluar.pk %}" class="btn btn-sm btn-info">Details</a>
+                    <a href="{% url 'keluar_update' keluar.pk %}" class="btn btn-sm btn-warning">Edit</a>
+                    <a href="{% url 'keluar_delete' keluar.pk %}" class="btn btn-sm btn-danger">Delete</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

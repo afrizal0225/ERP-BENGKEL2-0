@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block title %}Product Inventory{% endblock %}
+
+{% block content %}
+<h1>Product Inventory</h1>
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>Kode Barang (SKU)</th>
+                <th>Nama Barang</th>
+                <th>Warna</th>
+                <th>Size</th>
+                <th>Stock</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for inventory in inventories %}
+            <tr>
+                <td>{{ inventory.product.sku }}</td>
+                <td>{{ inventory.product.name }}</td>
+                <td>{{ inventory.product.colour }}</td>
+                <td>{{ inventory.product.size }}</td>
+                <td>{{ inventory.current_stock }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

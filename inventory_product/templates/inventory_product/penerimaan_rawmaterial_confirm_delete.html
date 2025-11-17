@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Penerimaan Raw Material{% endblock %}
+
+{% block content %}
+<h1>Delete Penerimaan Raw Material</h1>
+<p>Are you sure you want to delete "{{ penerimaan }}"?</p>
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">Delete</button>
+    <a href="{% url 'penerimaan_rawmaterial_list' %}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}

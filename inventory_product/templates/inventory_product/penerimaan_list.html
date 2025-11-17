@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block title %}Penerimaan Barang{% endblock %}
+
+{% block content %}
+<h1>Penerimaan Barang</h1>
+<div class="mb-3">
+    <a href="{% url 'penerimaan_create' %}" class="btn btn-primary">Add Penerimaan</a>
+    <a href="{% url 'penerimaan_bulk_create' %}" class="btn btn-secondary">Bulk Upload</a>
+</div>
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>ID Penerimaan</th>
+                <th>ID Supplier</th>
+                <th>Tanggal Terima</th>
+                <th>Total Quantity</th>
+                <th>Keterangan</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for penerimaan in penerimaans %}
+            <tr>
+                <td>{{ penerimaan.id_penerimaan }}</td>
+                <td>{{ penerimaan.id_supplier }}</td>
+                <td>{{ penerimaan.tanggal_terima }}</td>
+                <td>{{ penerimaan.total_quantity }}</td>
+                <td>{{ penerimaan.keterangan }}</td>
+                <td>
+                    <a href="{% url 'penerimaan_detail_list' penerimaan.pk %}" class="btn btn-sm btn-info">Details</a>
+                    <a href="{% url 'penerimaan_update' penerimaan.pk %}" class="btn btn-sm btn-warning">Edit</a>
+                    <a href="{% url 'penerimaan_delete' penerimaan.pk %}" class="btn btn-sm btn-danger">Delete</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block title %}Raw Material Inventory{% endblock %}
+
+{% block content %}
+<h1>Raw Material Inventory</h1>
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>Kode Barang (SKU)</th>
+                <th>Nama Barang</th>
+                <th>Kategori</th>
+                <th>Unit</th>
+                <th>Stock</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for inventory in inventories %}
+            <tr>
+                <td>{{ inventory.rawmaterial.sku }}</td>
+                <td>{{ inventory.rawmaterial.name }}</td>
+                <td>{{ inventory.rawmaterial.category }}</td>
+                <td>{{ inventory.rawmaterial.unit_of_measurement }}</td>
+                <td>{{ inventory.current_stock }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
