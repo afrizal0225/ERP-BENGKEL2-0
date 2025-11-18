@@ -173,6 +173,25 @@
                     Outgoing Raw Materials
                 </a>
             </div>
+
+            <!-- Manufacture Menu -->
+            <div class="nav-link" onclick="toggleSubmenu('manufacture-submenu')">
+                <i class="bi bi-gear"></i>
+                Manufacture
+                <button class="menu-toggle">
+                    <i class="bi bi-chevron-down" id="manufacture-chevron"></i>
+                </button>
+            </div>
+            <div class="submenu" id="manufacture-submenu">
+                <a class="nav-link" href="{% url 'stasiunkerja_list' %}">
+                    <i class="bi bi-tools"></i>
+                    Stasiun Kerja
+                </a>
+                <a class="nav-link" href="{% url 'bom_list' %}">
+                    <i class="bi bi-list-check"></i>
+                    BOM
+                </a>
+            </div>
         </nav>
     </div>
     <div class="main-content">

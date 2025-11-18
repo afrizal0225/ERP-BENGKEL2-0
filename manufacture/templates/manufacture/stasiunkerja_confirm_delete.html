@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Stasiun Kerja{% endblock %}
+
+{% block content %}
+<h1>Delete Stasiun Kerja</h1>
+<p>Are you sure you want to delete "{{ stasiunker.nama_stasiun_kerja }}"?</p>
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">Yes, delete</button>
+    <a href="{% url 'stasiunkerja_list' %}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}

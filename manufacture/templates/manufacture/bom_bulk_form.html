@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+<div class="alert alert-info">
+    <h5>How to use bulk upload:</h5>
+    <ol>
+        <li>Download the <a href="{% url 'download_bom_template' %}" class="alert-link">BOM template Excel file</a></li>
+        <li>Check the "Products_Exist", "RawMaterials_Exist", and "StasiunKerja_Exist" sheets for available IDs, SKUs and names</li>
+        <li>Fill in your BOM Detail data starting from row 2 (row 1 is headers)</li>
+        <li>Ensure columns are in this order: BOM ID, Product SKU, Nama Product, Version, Raw Material SKU, Nama Raw Material, Stasiun Kerja ID, Nama Stasiun Kerja, Satuan, Qty</li>
+        <li>All referenced IDs and SKUs must exist in their respective tables</li>
+        <li>Save the file and upload it below</li>
+    </ol>
+</div>
+<form method="post" enctype="multipart/form-data" class="col-md-6">
+    {% csrf_token %}
+    <div class="mb-3">
+        <label for="{{ form.file.id_for_label }}" class="form-label">{{ form.file.label }}</label>
+        {{ form.file }}
+        {% if form.file.errors %}
+        <div class="text-danger">
+            {% for error in form.file.errors %}
+            {{ error }}
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    <button type="submit" class="btn btn-primary">Upload</button>
+    <a href="{% url 'bom_list' %}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}
