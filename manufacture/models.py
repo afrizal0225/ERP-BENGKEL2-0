@@ -42,5 +42,59 @@ def set_bomdetail_prices(sender, instance, **kwargs):
     if instance.id_rawmaterial:
         instance.harga_satuanrawmaterial = instance.id_rawmaterial.price
         instance.harga_totalrawmaterial = instance.id_rawmaterial.price * instance.qty
+
+class ProductionOrder(models.Model):
+    id_po = models.CharField(max_length=50, primary_key=True)
+    tanggal_request = models.DateField()
+    tanggal_selesai = models.DateField()
+
+    def __str__(self):
+        return f"PO {self.id_po}"
+
+class ProductionOrderDetail(models.Model):
+    id_po = models.ForeignKey(ProductionOrder, on_delete=models.CASCADE)
+    id_product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    nama_product = models.CharField(max_length=200)
+    size = models.CharField(max_length=50)
+    warna = models.CharField(max_length=50)
+    qty_produksi = models.DecimalField(max_digits=10, decimal_places=2)
+    keterangan = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"{self.id_po} - {self.nama_product}"
+
     class Meta:
-        unique_together = ('id_bom', 'id_product', 'id_rawmaterial', 'version')
+        unique_together = ('id_po', 'id_product')
+
+class SuratPerintahKerja(models.Model):
+    id_spk = models.CharField(max_length=50, primary_key=True)
+    id_po = models.ForeignKey(ProductionOrder, on_delete=models.CASCADE)
+    tanggal_spk = models.DateField()
+    status = models.CharField(max_length=50, default='Draft')
+    keterangan = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"SPK {self.id_spk} - {self.id_po}"
+
+class SPKDetail(models.Model):
+    id_spk = models.ForeignKey(SuratPerintahKerja, on_delete=models.CASCADE)
+    id_stasiunkerja = models.ForeignKey(StasiunKerja, on_delete=models.CASCADE)
+    nama_stasiunkerja = models.CharField(max_length=200, blank=True)
+    id_rawmaterial = models.ForeignKey(RawMaterial, on_delete=models.CASCADE)
+    nama_rawmaterial = models.CharField(max_length=200, blank=True)
+    qty_kebutuhan = models.DecimalField(max_digits=10, decimal_places=2)
+    satuan = models.CharField(max_length=50)
+
+    def __str__(self):
+        return f"{self.id_spk} - {self.nama_stasiunkerja} - {self.nama_rawmaterial}"
+
+class SPKOutput(models.Model):
+    id_spk = models.ForeignKey(SuratPerintahKerja, on_delete=models.CASCADE)
+    id_stasiunkerja = models.ForeignKey(StasiunKerja, on_delete=models.CASCADE)
+    nama_stasiunkerja = models.CharField(max_length=200, blank=True)
+    id_product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    nama_product = models.CharField(max_length=200)
+    qty_output = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def __str__(self):
+        return f"{self.id_spk} - {self.nama_stasiunkerja} - {self.nama_product}"

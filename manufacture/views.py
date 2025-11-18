@@ -1,12 +1,13 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from .models import StasiunKerja, BOM, BOMDetail
+from .models import StasiunKerja, BOM, BOMDetail, ProductionOrder, ProductionOrderDetail, SuratPerintahKerja, SPKDetail, SPKOutput
 from product.models import Product, RawMaterial
-from .forms import StasiunKerjaForm, BOMForm, BOMDetailForm, BulkUploadForm
+from .forms import StasiunKerjaForm, BOMForm, BOMDetailForm, BulkUploadForm, ProductionOrderForm, ProductionOrderDetailForm, SuratPerintahKerjaForm
 from django.contrib import messages
 import openpyxl
 from datetime import datetime
 from openpyxl import Workbook
 from django.http import HttpResponse
+from django.db.models import Sum
 
 def stasiunkerja_list(request):
     stasiunkers = StasiunKerja.objects.all()
@@ -191,6 +192,135 @@ def bomdetail_delete(request, pk):
         return redirect('bom_update', pk=bom_pk)
     return render(request, 'manufacture/bomdetail_confirm_delete.html', {'bomdetail': bomdetail})
 
+def productionorder_list(request):
+    productionorders = ProductionOrder.objects.all()
+    return render(request, 'manufacture/productionorder_list.html', {'productionorders': productionorders})
+
+
+def productionorder_update(request, pk):
+    productionorder = get_object_or_404(ProductionOrder, pk=pk)
+    if request.method == 'POST':
+        form = ProductionOrderForm(request.POST, instance=productionorder)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Production Order updated successfully.')
+            return redirect('productionorder_list')
+    else:
+        form = ProductionOrderForm(instance=productionorder)
+    return render(request, 'manufacture/productionorder_form.html', {'form': form, 'title': 'Update Production Order'})
+
+def productionorder_delete(request, pk):
+    productionorder = get_object_or_404(ProductionOrder, pk=pk)
+    if request.method == 'POST':
+        productionorder.delete()
+        messages.success(request, 'Production Order deleted successfully.')
+        return redirect('productionorder_list')
+    return render(request, 'manufacture/productionorder_confirm_delete.html', {'productionorder': productionorder})
+
+def productionorder_detail(request, pk):
+    productionorder = get_object_or_404(ProductionOrder, pk=pk)
+    details = ProductionOrderDetail.objects.filter(id_po=productionorder)
+    return render(request, 'manufacture/productionorder_detail.html', {'productionorder': productionorder, 'details': details})
+
+def productionorderdetail_create(request, po_pk):
+    productionorder = get_object_or_404(ProductionOrder, pk=po_pk)
+    if request.method == 'POST':
+        form = ProductionOrderDetailForm(request.POST)
+        if form.is_valid():
+            product = form.cleaned_data['id_product']
+            # Check if product has BOM
+            if not BOM.objects.filter(id_product=product).exists():
+                messages.error(request, f"Cannot create Production Order Detail: Product '{product.name}' (SKU: {product.sku}) does not have a BOM. Production Orders can only be created for products with existing BOMs.")
+                return render(request, 'manufacture/productionorderdetail_form.html', {'form': form, 'productionorder': productionorder, 'title': 'Create Production Order Detail'})
+
+            detail = form.save(commit=False)
+            detail.id_po = productionorder
+            detail.save()
+            messages.success(request, 'Production Order Detail created successfully.')
+            return redirect('productionorder_detail', pk=po_pk)
+    else:
+        form = ProductionOrderDetailForm()
+    return render(request, 'manufacture/productionorderdetail_form.html', {'form': form, 'productionorder': productionorder, 'title': 'Create Production Order Detail'})
+
+def productionorderdetail_update(request, pk):
+    detail = get_object_or_404(ProductionOrderDetail, pk=pk)
+    if request.method == 'POST':
+        form = ProductionOrderDetailForm(request.POST, instance=detail)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Production Order Detail updated successfully.')
+            return redirect('productionorder_detail', pk=detail.id_po.pk)
+    else:
+        form = ProductionOrderDetailForm(instance=detail)
+    return render(request, 'manufacture/productionorderdetail_form.html', {'form': form, 'productionorder': detail.id_po, 'title': 'Update Production Order Detail'})
+
+def productionorderdetail_delete(request, pk):
+    detail = get_object_or_404(ProductionOrderDetail, pk=pk)
+    po_pk = detail.id_po.pk
+    if request.method == 'POST':
+        detail.delete()
+        messages.success(request, 'Production Order Detail deleted successfully.')
+        return redirect('productionorder_detail', pk=po_pk)
+    return render(request, 'manufacture/productionorderdetail_confirm_delete.html', {'detail': detail})
+
+def productionorder_bulk_create(request):
+    if request.method == 'POST':
+        form = BulkUploadForm(request.POST, request.FILES)
+        if form.is_valid():
+            file = request.FILES['file']
+            try:
+                wb = openpyxl.load_workbook(file)
+                sheet = wb.active
+                created_count = 0
+                for row in sheet.iter_rows(min_row=2, values_only=True):
+                    if len(row) < 9:
+                        continue
+                    po_id, tanggal_request, tanggal_selesai, product_sku, nama_product, size, warna, qty_produksi, keterangan = row[:9]
+                    try:
+                        # Parse dates
+                        if isinstance(tanggal_request, str):
+                            tanggal_request = datetime.strptime(tanggal_request, '%Y-%m-%d').date()
+                        if isinstance(tanggal_selesai, str):
+                            tanggal_selesai = datetime.strptime(tanggal_selesai, '%Y-%m-%d').date()
+
+                        product = Product.objects.get(sku=product_sku)
+
+                        # Check if product has BOM
+                        if not BOM.objects.filter(id_product=product).exists():
+                            messages.error(request, f"Product with SKU {product_sku} does not have a BOM. Production Orders can only be created for products with existing BOMs.")
+                            continue
+
+                        po, po_created = ProductionOrder.objects.get_or_create(
+                            id_po=po_id,
+                            defaults={
+                                'tanggal_request': tanggal_request,
+                                'tanggal_selesai': tanggal_selesai
+                            }
+                        )
+                        ProductionOrderDetail.objects.get_or_create(
+                            id_po=po,
+                            id_product=product,
+                            defaults={
+                                'nama_product': nama_product or '',
+                                'size': size or '',
+                                'warna': warna or '',
+                                'qty_produksi': qty_produksi,
+                                'keterangan': keterangan or '',
+                            }
+                        )
+                        created_count += 1
+                    except Product.DoesNotExist:
+                        messages.error(request, f"Product with SKU {product_sku} not found")
+                    except Exception as e:
+                        messages.error(request, f"Error creating Production Order Detail: {e}")
+                messages.success(request, f'Bulk upload completed. {created_count} Production Order Details created.')
+            except Exception as e:
+                messages.error(request, f"Error processing file: {e}")
+            return redirect('productionorder_list')
+    else:
+        form = BulkUploadForm()
+    return render(request, 'manufacture/productionorder_bulk_form.html', {'form': form, 'title': 'Bulk Upload Production Orders'})
+
     ws = wb.active
     ws.title = "Stasiun Kerja"
     headers = ['Nama Stasiun Kerja', 'Keterangan']
@@ -233,3 +363,125 @@ def download_bom_template(request):
     response['Content-Disposition'] = 'attachment; filename=bom_template.xlsx'
     wb.save(response)
     return response
+
+def download_productionorder_template(request):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Production Order"
+    headers = ['PO ID', 'Tanggal Request', 'Tanggal Selesai', 'Product SKU', 'Nama Product', 'Size', 'Warna', 'Qty Produksi', 'Keterangan']
+    ws.append(headers)
+    # Sample row
+    ws.append(['PO001', '2024-01-15', '2024-01-20', 'PROD001', 'Sample Product', 'M', 'Red', '100', 'Urgent order'])
+
+    # Sheet for existing products that have BOMs
+    ws_products = wb.create_sheet("Products_Exist")
+    ws_products.append(['Product SKU', 'Nama Product', 'Size', 'Colour', 'BOM Version'])
+    # Only include products that have BOMs
+    products_with_bom = Product.objects.filter(bom__isnull=False).distinct()
+    for product in products_with_bom:
+        # Get the latest BOM version for this product
+        latest_bom = BOM.objects.filter(id_product=product).order_by('-version').first()
+        bom_version = latest_bom.version if latest_bom else ''
+        ws_products.append([product.sku, product.name, product.size, product.colour, bom_version])
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename=productionorder_template.xlsx'
+    wb.save(response)
+    return response
+
+def spk_list(request):
+    spks = SuratPerintahKerja.objects.all()
+    return render(request, 'manufacture/spk_list.html', {'spks': spks})
+
+def spk_create(request):
+    if request.method == 'POST':
+        form = SuratPerintahKerjaForm(request.POST)
+        if form.is_valid():
+            spk = form.save()
+            # Generate SPK details and outputs
+            generate_spk_details(spk)
+            messages.success(request, 'SPK created successfully with generated details.')
+            return redirect('spk_detail', pk=spk.pk)
+    else:
+        form = SuratPerintahKerjaForm()
+    return render(request, 'manufacture/spk_form.html', {'form': form, 'title': 'Create SPK'})
+
+def spk_detail(request, pk):
+    spk = get_object_or_404(SuratPerintahKerja, pk=pk)
+    details = SPKDetail.objects.filter(id_spk=spk)
+    outputs = SPKOutput.objects.filter(id_spk=spk)
+    return render(request, 'manufacture/spk_detail.html', {'spk': spk, 'details': details, 'outputs': outputs})
+
+def spk_delete(request, pk):
+    spk = get_object_or_404(SuratPerintahKerja, pk=pk)
+    if request.method == 'POST':
+        spk.delete()
+        messages.success(request, 'SPK deleted successfully.')
+        return redirect('spk_list')
+    return render(request, 'manufacture/spk_confirm_delete.html', {'spk': spk})
+
+def generate_spk_details(spk):
+    po = spk.id_po
+    po_details = ProductionOrderDetail.objects.filter(id_po=po)
+
+    # Dictionary to accumulate raw material needs per station
+    raw_material_needs = {}
+    # Set to collect unique stations per product
+    stations_per_product = {}
+
+    for po_detail in po_details:
+        product = po_detail.id_product
+        qty_produksi = po_detail.qty_produksi
+
+        # Get BOM for the product
+        bom = BOM.objects.filter(id_product=product).first()
+        if not bom:
+            continue
+
+        bom_details = BOMDetail.objects.filter(id_bom=bom)
+
+        for bom_detail in bom_details:
+            station = bom_detail.id_stasiunkerja
+            rawmaterial = bom_detail.id_rawmaterial
+            qty_needed = bom_detail.qty * qty_produksi
+
+            key = (station.id_stasiun_kerja, rawmaterial.sku)
+            if key not in raw_material_needs:
+                raw_material_needs[key] = {
+                    'station': station,
+                    'rawmaterial': rawmaterial,
+                    'qty': 0,
+                    'satuan': bom_detail.satuan
+                }
+            raw_material_needs[key]['qty'] += qty_needed
+
+            # Collect unique stations for this product
+            if product.sku not in stations_per_product:
+                stations_per_product[product.sku] = {'product': product, 'qty_produksi': qty_produksi, 'stations': set()}
+            stations_per_product[product.sku]['stations'].add(station)
+
+    # Create SPKDetail instances
+    for key, data in raw_material_needs.items():
+        SPKDetail.objects.create(
+            id_spk=spk,
+            id_stasiunkerja=data['station'],
+            nama_stasiunkerja=data['station'].nama_stasiun_kerja,
+            id_rawmaterial=data['rawmaterial'],
+            nama_rawmaterial=data['rawmaterial'].name,
+            qty_kebutuhan=data['qty'],
+            satuan=data['satuan']
+        )
+
+    # Create SPKOutput instances - each station produces the full qty_produksi for the product
+    for product_data in stations_per_product.values():
+        product = product_data['product']
+        qty_produksi = product_data['qty_produksi']
+        for station in product_data['stations']:
+            SPKOutput.objects.create(
+                id_spk=spk,
+                id_stasiunkerja=station,
+                nama_stasiunkerja=station.nama_stasiun_kerja,
+                id_product=product,
+                nama_product=product.name,
+                qty_output=qty_produksi
+            )

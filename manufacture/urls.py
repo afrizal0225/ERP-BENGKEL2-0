@@ -18,4 +18,19 @@ urlpatterns = [
     path('bomdetail/<int:pk>/delete/', views.bomdetail_delete, name='bomdetail_delete'),
     path('bom/bulk/', views.bom_bulk_create, name='bom_bulk_create'),
     path('bom/template/', views.download_bom_template, name='download_bom_template'),
+
+    path('productionorder/', views.productionorder_list, name='productionorder_list'),
+    path('productionorder/<str:pk>/update/', views.productionorder_update, name='productionorder_update'),
+    path('productionorder/<str:pk>/delete/', views.productionorder_delete, name='productionorder_delete'),
+    path('productionorder/<str:pk>/detail/', views.productionorder_detail, name='productionorder_detail'),
+    path('productionorder/<str:po_pk>/detail/create/', views.productionorderdetail_create, name='productionorderdetail_create'),
+    path('productionorderdetail/<int:pk>/update/', views.productionorderdetail_update, name='productionorderdetail_update'),
+    path('productionorderdetail/<int:pk>/delete/', views.productionorderdetail_delete, name='productionorderdetail_delete'),
+    path('productionorder/bulk/', views.productionorder_bulk_create, name='productionorder_bulk_create'),
+    path('productionorder/template/', views.download_productionorder_template, name='download_productionorder_template'),
+
+    path('spk/', views.spk_list, name='spk_list'),
+    path('spk/create/', views.spk_create, name='spk_create'),
+    path('spk/<str:pk>/detail/', views.spk_detail, name='spk_detail'),
+    path('spk/<str:pk>/delete/', views.spk_delete, name='spk_delete'),
 ]

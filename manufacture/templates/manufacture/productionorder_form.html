@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+<form method="post">
+    {% csrf_token %}
+
+    <!-- Production Order Header -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Production Order Information</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {% for field in form %}
+                <div class="col-md-6 mb-3">
+                    <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.errors %}
+                    <div class="text-danger">
+                        {% for error in field.errors %}
+                        {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Production Order Details -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5>Production Order Details</h5>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="add-detail">Add Detail</button>
+        </div>
+        <div class="card-body">
+            {{ formset.management_form }}
+            <div id="detail-forms">
+                {% for detail_form in formset %}
+                <div class="detail-form border rounded p-3 mb-3">
+                    <div class="row">
+                        {% for field in detail_form %}
+                        {% if field.name != 'DELETE' %}
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.errors %}
+                            <div class="text-danger">
+                                {% for error in field.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% if detail_form.DELETE %}
+                    <div class="mb-2">
+                        {{ detail_form.DELETE }} <label for="{{ detail_form.DELETE.id_for_label }}">Delete this detail</label>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">Save Production Order</button>
+        <a href="{% url 'productionorder_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
+
+<script>
+// Add functionality to dynamically add more detail forms
+document.getElementById('add-detail').addEventListener('click', function() {
+    const detailForms = document.getElementById('detail-forms');
+    const lastForm = detailForms.lastElementChild;
+    if (lastForm) {
+        const clone = lastForm.cloneNode(true);
+        // Clear input values in the cloned form
+        const inputs = clone.querySelectorAll('input, select, textarea');
+        inputs.forEach(input => {
+            if (input.type !== 'checkbox') {
+                input.value = '';
+            }
+        });
+        // Update form indices (this is a simplified version - Django handles this automatically)
+        detailForms.appendChild(clone);
+    }
+});
+</script>
+{% endblock %}
