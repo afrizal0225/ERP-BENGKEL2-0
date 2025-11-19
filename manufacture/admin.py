@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import StasiunKerja, BOM, BOMDetail, ProductionOrder, ProductionOrderDetail, SuratPerintahKerja, SPKDetail, SPKOutput
+from .models import StasiunKerja, BOM, BOMDetail, ProductionOrder, ProductionOrderDetail, SuratPerintahKerja, SPKDetail, SPKOutput, ProductionProgress
 
 @admin.register(StasiunKerja)
 class StasiunKerjaAdmin(admin.ModelAdmin):
@@ -46,4 +46,10 @@ class SPKDetailAdmin(admin.ModelAdmin):
 class SPKOutputAdmin(admin.ModelAdmin):
     list_display = ('id_spk', 'nama_product', 'qty_output')
     list_filter = ('id_spk',)
+    search_fields = ('nama_product',)
+
+@admin.register(ProductionProgress)
+class ProductionProgressAdmin(admin.ModelAdmin):
+    list_display = ('id_spk', 'id_stasiunkerja', 'nama_product', 'tanggal_mulai', 'tanggal_selesai', 'qty_selesai')
+    list_filter = ('id_spk', 'id_stasiunkerja', 'tanggal_mulai', 'tanggal_selesai')
     search_fields = ('nama_product',)

@@ -1,5 +1,5 @@
 from django import forms
-from .models import StasiunKerja, BOM, BOMDetail, ProductionOrder, ProductionOrderDetail, SuratPerintahKerja
+from .models import StasiunKerja, BOM, BOMDetail, ProductionOrder, ProductionOrderDetail, SuratPerintahKerja, ProductionProgress
 from product.models import Product
 
 class StasiunKerjaForm(forms.ModelForm):
@@ -57,3 +57,22 @@ class SuratPerintahKerjaForm(forms.ModelForm):
         from .models import ProductionOrderDetail
         po_with_remaining = ProductionOrderDetail.objects.filter(qty_remaining__gt=0).values_list('id_po', flat=True).distinct()
         self.fields['id_po'].queryset = self.fields['id_po'].queryset.filter(id_po__in=po_with_remaining)
+
+class ProductionProgressForm(forms.ModelForm):
+    class Meta:
+        model = ProductionProgress
+        fields = ['id_spk', 'id_stasiunkerja', 'id_product', 'tanggal_mulai', 'tanggal_selesai', 'qty_selesai']
+        widgets = {
+            'tanggal_mulai': forms.DateInput(attrs={'type': 'date'}),
+            'tanggal_selesai': forms.DateInput(attrs={'type': 'date'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Filter SPKs that are approved
+        self.fields['id_spk'].queryset = self.fields['id_spk'].queryset.filter(status='Approved')
+        # For update, filter products based on instance SPK
+        if self.instance.pk:
+            from .models import SPKOutput
+            products = SPKOutput.objects.filter(id_spk=self.instance.id_spk).values_list('id_product', flat=True)
+            self.fields['id_product'].queryset = self.fields['id_product'].queryset.filter(pk__in=products)

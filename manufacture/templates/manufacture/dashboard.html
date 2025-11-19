@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+
+{% block title %}Manufacture Dashboard{% endblock %}
+
+{% block content %}
+<h1>Manufacture Dashboard</h1>
+
+<!-- PO Remaining Section -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5>Production Orders with Remaining Quantities</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>PO ID</th>
+                        <th>Tanggal Request</th>
+                        <th>Tanggal Selesai</th>
+                        <th>Total Remaining Qty</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for po in pos_with_remaining %}
+                    <tr>
+                        <td>{{ po.id_po }}</td>
+                        <td>{{ po.tanggal_request }}</td>
+                        <td>{{ po.tanggal_selesai }}</td>
+                        <td>{{ po.total_remaining }}</td>
+                        <td>
+                            <span class="badge bg-warning">Has Remaining</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- SPK Progress Section -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5>SPK Progress per Workstation</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>SPK ID</th>
+                        <th>PO ID</th>
+                        <th>Workstation</th>
+                        <th>Total Qty Completed</th>
+                        <th>Total Allocated</th>
+                        <th>Progress Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for progress in spk_progress %}
+                    <tr>
+                        <td>{{ progress.spk_id }}</td>
+                        <td>{{ progress.po_id }}</td>
+                        <td>{{ progress.station_name }}</td>
+                        <td>{{ progress.total_qty_selesai }}</td>
+                        <td>{{ progress.total_allocated }}</td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="progress flex-grow-1 me-2" style="height: 20px;">
+                                    <div class="progress-bar" role="progressbar"
+                                         style="width: {{ progress.percentage }}%;"
+                                         aria-valuenow="{{ progress.percentage }}"
+                                         aria-valuemin="0" aria-valuemax="100">
+                                        {{ progress.percentage }}%
+                                    </div>
+                                </div>
+                                {% if progress.percentage == 100 %}
+                                    <span class="badge bg-success">Completed</span>
+                                {% elif progress.percentage > 0 %}
+                                    <span class="badge bg-primary">In Progress</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Not Started</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- SPK Summary -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5>Approved SPKs</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>SPK ID</th>
+                        <th>PO ID</th>
+                        <th>Tanggal SPK</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for spk in spks %}
+                    <tr>
+                        <td>{{ spk.id_spk }}</td>
+                        <td>{{ spk.id_po.id_po }}</td>
+                        <td>{{ spk.tanggal_spk }}</td>
+                        <td>
+                            <span class="badge bg-success">{{ spk.status }}</span>
+                        </td>
+                        <td>
+                            <a href="{% url 'spk_detail' spk.pk %}" class="btn btn-sm btn-info">View Details</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

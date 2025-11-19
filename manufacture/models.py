@@ -105,5 +105,17 @@ class SPKOutput(models.Model):
     nama_product = models.CharField(max_length=200)
     qty_output = models.DecimalField(max_digits=10, decimal_places=2)
 
+class ProductionProgress(models.Model):
+    id_spk = models.ForeignKey(SuratPerintahKerja, on_delete=models.CASCADE)
+    id_stasiunkerja = models.ForeignKey(StasiunKerja, on_delete=models.CASCADE)
+    id_product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    nama_product = models.CharField(max_length=200, blank=True)
+    tanggal_mulai = models.DateField()
+    tanggal_selesai = models.DateField()
+    qty_selesai = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def __str__(self):
+        return f"Progress {self.id_spk} - {self.nama_product} - {self.qty_selesai}"
+
     def __str__(self):
         return f"{self.id_spk} - {self.nama_stasiunkerja} - {self.nama_product}"

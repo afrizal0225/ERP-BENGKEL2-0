@@ -35,4 +35,11 @@ urlpatterns = [
     path('spk/<str:pk>/approve/', views.spk_approve, name='spk_approve'),
     path('spk/<str:pk>/download/', views.download_spk, name='download_spk'),
     path('spk/<str:pk>/delete/', views.spk_delete, name='spk_delete'),
+
+    path('dashboard/', views.manufacture_dashboard, name='manufacture_dashboard'),
+    path('productionprogress/', views.productionprogress_list, name='productionprogress_list'),
+    path('productionprogress/create/', views.productionprogress_create, name='productionprogress_create'),
+    path('productionprogress/<int:pk>/update/', views.productionprogress_update, name='productionprogress_update'),
+    path('productionprogress/<int:pk>/delete/', views.productionprogress_delete, name='productionprogress_delete'),
+    path('api/get-products-for-spk/', views.get_products_for_spk, name='get_products_for_spk'),
 ]

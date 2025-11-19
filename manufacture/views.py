@@ -1,12 +1,13 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from .models import StasiunKerja, BOM, BOMDetail, ProductionOrder, ProductionOrderDetail, SuratPerintahKerja, SPKDetail, SPKOutput
+from .models import StasiunKerja, BOM, BOMDetail, ProductionOrder, ProductionOrderDetail, SuratPerintahKerja, SPKDetail, SPKOutput, ProductionProgress
 from product.models import Product, RawMaterial
-from .forms import StasiunKerjaForm, BOMForm, BOMDetailForm, BulkUploadForm, ProductionOrderForm, ProductionOrderDetailForm, SuratPerintahKerjaForm
+from django.db.models import Q
+from .forms import StasiunKerjaForm, BOMForm, BOMDetailForm, BulkUploadForm, ProductionOrderForm, ProductionOrderDetailForm, SuratPerintahKerjaForm, ProductionProgressForm
 from django.contrib import messages
 import openpyxl
 from datetime import datetime
 from openpyxl import Workbook
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.db.models import Sum
 from decimal import Decimal
 
@@ -605,3 +606,178 @@ def generate_spk_details(spk):
             qty_kebutuhan=data['qty'],
             satuan=data['satuan']
         )
+
+def productionprogress_list(request):
+    progresses = ProductionProgress.objects.all()
+
+    # Handle filtering
+    id_spk_filter = request.GET.get('id_spk', '')
+    id_stasiunkerja_filter = request.GET.get('id_stasiunkerja', '')
+    tanggal_mulai_filter = request.GET.get('tanggal_mulai', '')
+    tanggal_selesai_filter = request.GET.get('tanggal_selesai', '')
+
+    if id_spk_filter:
+        progresses = progresses.filter(id_spk__id_spk__icontains=id_spk_filter)
+    if id_stasiunkerja_filter:
+        progresses = progresses.filter(id_stasiunkerja__id_stasiun_kerja__icontains=id_stasiunkerja_filter)
+    if tanggal_mulai_filter:
+        progresses = progresses.filter(tanggal_mulai=tanggal_mulai_filter)
+    if tanggal_selesai_filter:
+        progresses = progresses.filter(tanggal_selesai=tanggal_selesai_filter)
+
+    context = {
+        'progresses': progresses,
+        'id_spk_filter': id_spk_filter,
+        'id_stasiunkerja_filter': id_stasiunkerja_filter,
+        'tanggal_mulai_filter': tanggal_mulai_filter,
+        'tanggal_selesai_filter': tanggal_selesai_filter,
+    }
+    return render(request, 'manufacture/productionprogress_list.html', context)
+
+def productionprogress_create(request):
+    if request.method == 'POST':
+        spk_id = request.POST.get('id_spk')
+        station_id = request.POST.get('id_stasiunkerja')
+        products_data = []
+
+        # Parse products data
+        index = 0
+        while f'products[{index}][id_product]' in request.POST:
+            product_data = {
+                'id_product': request.POST.get(f'products[{index}][id_product]'),
+                'tanggal_mulai': request.POST.get(f'products[{index}][tanggal_mulai]'),
+                'tanggal_selesai': request.POST.get(f'products[{index}][tanggal_selesai]'),
+                'qty_selesai': request.POST.get(f'products[{index}][qty_selesai]'),
+            }
+            products_data.append(product_data)
+            index += 1
+
+        if spk_id and station_id and products_data:
+            try:
+                spk = SuratPerintahKerja.objects.get(id_spk=spk_id)
+                station = StasiunKerja.objects.get(id_stasiun_kerja=station_id)
+                created_count = 0
+                for data in products_data:
+                    if data['qty_selesai'] and float(data['qty_selesai']) > 0:
+                        product = Product.objects.get(sku=data['id_product'])
+                        ProductionProgress.objects.create(
+                            id_spk=spk,
+                            id_stasiunkerja=station,
+                            id_product=product,
+                            nama_product=product.name,
+                            tanggal_mulai=data['tanggal_mulai'],
+                            tanggal_selesai=data['tanggal_selesai'],
+                            qty_selesai=data['qty_selesai']
+                        )
+                        created_count += 1
+                messages.success(request, f'{created_count} Production Progress entries created successfully.')
+                return redirect('productionprogress_list')
+            except Exception as e:
+                messages.error(request, f'Error creating progress: {e}')
+        else:
+            messages.error(request, 'Invalid data submitted.')
+
+    form = ProductionProgressForm()
+    return render(request, 'manufacture/productionprogress_form.html', {'form': form, 'title': 'Create Production Progress'})
+
+def productionprogress_update(request, pk):
+    progress = get_object_or_404(ProductionProgress, pk=pk)
+    if request.method == 'POST':
+        form = ProductionProgressForm(request.POST, instance=progress)
+        if form.is_valid():
+            progress = form.save(commit=False)
+            progress.nama_product = progress.id_product.name
+            progress.save()
+            messages.success(request, 'Production Progress updated successfully.')
+            return redirect('productionprogress_list')
+    else:
+        form = ProductionProgressForm(instance=progress)
+    return render(request, 'manufacture/productionprogress_form.html', {'form': form, 'title': 'Update Production Progress'})
+
+def productionprogress_delete(request, pk):
+    progress = get_object_or_404(ProductionProgress, pk=pk)
+    if request.method == 'POST':
+        progress.delete()
+        messages.success(request, 'Production Progress deleted successfully.')
+        return redirect('productionprogress_list')
+    return render(request, 'manufacture/productionprogress_confirm_delete.html', {'progress': progress})
+
+def manufacture_dashboard(request):
+    # Get POs with remaining quantities (calculated as total PO output - total approved SPK outputs)
+    pos_with_remaining = []
+    all_pos = ProductionOrder.objects.all()
+    for po in all_pos:
+        total_po_output = po.productionorderdetail_set.aggregate(
+            total=Sum('qty_produksi')
+        )['total'] or 0
+
+        total_spk_approved = SPKOutput.objects.filter(
+            id_spk__id_po=po,
+            id_spk__status='Approved'
+        ).aggregate(total=Sum('qty_output'))['total'] or 0
+
+        remaining = total_po_output - total_spk_approved
+        if remaining > 0:
+            po.total_remaining = remaining
+            pos_with_remaining.append(po)
+
+    # Get SPK progress per station
+    spk_progress = ProductionProgress.objects.values(
+        'id_spk__id_spk',
+        'id_spk__id_po__id_po',
+        'id_stasiunkerja__nama_stasiun_kerja',
+        'id_stasiunkerja'
+    ).annotate(
+        total_qty_selesai=Sum('qty_selesai')
+    ).order_by('id_spk__id_spk', 'id_stasiunkerja__nama_stasiun_kerja')
+
+    # Calculate progress percentage for each
+    progress_data = []
+    for progress in spk_progress:
+        spk_id = progress['id_spk__id_spk']
+        station_id = progress['id_stasiunkerja']
+        total_selesai = progress['total_qty_selesai'] or 0
+
+        # Get total allocated for this SPK and station: sum of SPKOutput.qty_output
+        # for products that have this station in their BOM
+        products_with_station = BOMDetail.objects.filter(
+            id_stasiunkerja=station_id
+        ).values_list('id_product', flat=True).distinct()
+
+        total_allocated = SPKOutput.objects.filter(
+            id_spk__id_spk=spk_id,
+            id_product__in=products_with_station
+        ).aggregate(total=Sum('qty_output'))['total'] or 0
+
+        percentage = (total_selesai / total_allocated * 100) if total_allocated > 0 else 0
+
+        progress_data.append({
+            'spk_id': spk_id,
+            'po_id': progress['id_spk__id_po__id_po'],
+            'station_name': progress['id_stasiunkerja__nama_stasiun_kerja'],
+            'total_qty_selesai': total_selesai,
+            'total_allocated': total_allocated,
+            'percentage': round(percentage, 2)
+        })
+
+    # Get SPK details for context
+    spks = SuratPerintahKerja.objects.filter(status='Approved').select_related('id_po')
+
+    context = {
+        'pos_with_remaining': pos_with_remaining,
+        'spk_progress': progress_data,
+        'spks': spks,
+    }
+    return render(request, 'manufacture/dashboard.html', context)
+
+def get_products_for_spk(request):
+    spk_id = request.GET.get('spk_id')
+    if spk_id:
+        try:
+            spk = SuratPerintahKerja.objects.get(id_spk=spk_id)
+            products = SPKOutput.objects.filter(id_spk=spk).select_related('id_product')
+            data = [{'id': p.id_product.pk, 'sku': p.id_product.sku, 'name': p.id_product.name} for p in products]
+            return JsonResponse({'products': data})
+        except SuratPerintahKerja.DoesNotExist:
+            return JsonResponse({'error': 'SPK not found'}, status=404)
+    return JsonResponse({'error': 'No SPK ID provided'}, status=400)

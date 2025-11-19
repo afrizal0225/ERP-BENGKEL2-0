@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+<form method="post">
+    {% csrf_token %}
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Production Progress Information</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="id_id_spk" class="form-label">Id spk</label>
+                    {{ form.id_spk }}
+                    {% if form.id_spk.errors %}
+                    <div class="text-danger">
+                        {% for error in form.id_spk.errors %}
+                        {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="id_id_stasiunkerja" class="form-label">Id stasiun kerja</label>
+                    {{ form.id_stasiunkerja }}
+                    {% if form.id_stasiunkerja.errors %}
+                    <div class="text-danger">
+                        {% for error in form.id_stasiunkerja.errors %}
+                        {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="mb-3">
+                <button type="button" id="generate-btn" class="btn btn-info">Generate Product Progress</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="progress-list" class="card mb-4" style="display: none;">
+        <div class="card-header">
+            <h5>Product Progress List</h5>
+        </div>
+        <div class="card-body">
+            <div id="progress-items"></div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">Save Production Progress</button>
+        <a href="{% url 'productionprogress_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const generateBtn = document.getElementById('generate-btn');
+    const progressList = document.getElementById('progress-list');
+    const progressItems = document.getElementById('progress-items');
+    const spkSelect = document.getElementById('id_id_spk');
+    const stationSelect = document.getElementById('id_id_stasiunkerja');
+
+    generateBtn.addEventListener('click', function() {
+        const spkId = spkSelect.value;
+        const stationId = stationSelect.value;
+
+        if (!spkId || !stationId) {
+            alert('Please select both SPK and Station.');
+            return;
+        }
+
+        fetch(`{% url 'get_products_for_spk' %}?spk_id=${spkId}`)
+            .then(response => response.json())
+            .then(data => {
+                progressItems.innerHTML = '';
+                data.products.forEach((product, index) => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'mb-3 border p-3';
+                    itemDiv.innerHTML = `
+                        <div class="row">
+                            <div class="col-md-3">
+                                <label>SKU</label>
+                                <input type="text" class="form-control" value="${product.sku}" readonly>
+                                <input type="hidden" name="products[${index}][id_product]" value="${product.id}">
+                            </div>
+                            <div class="col-md-3">
+                                <label>Product Name</label>
+                                <input type="text" class="form-control" value="${product.name}" readonly>
+                            </div>
+                            <div class="col-md-2">
+                                <label>Tanggal Mulai</label>
+                                <input type="date" class="form-control" name="products[${index}][tanggal_mulai]" required>
+                            </div>
+                            <div class="col-md-2">
+                                <label>Tanggal Selesai</label>
+                                <input type="date" class="form-control" name="products[${index}][tanggal_selesai]" required>
+                            </div>
+                            <div class="col-md-2">
+                                <label>Qty Selesai</label>
+                                <input type="number" step="0.01" class="form-control" name="products[${index}][qty_selesai]" required>
+                            </div>
+                        </div>
+                    `;
+                    progressItems.appendChild(itemDiv);
+                });
+                progressList.style.display = 'block';
+            })
+            .catch(error => {
+                console.error('Error fetching products:', error);
+                alert('Error loading products for selected SPK.');
+            });
+    });
+});
+</script>
+{% endblock %}
