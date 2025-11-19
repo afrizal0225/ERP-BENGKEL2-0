@@ -18,6 +18,14 @@
         <p><strong>Tanggal SPK:</strong> {{ spk.tanggal_spk }}</p>
         <p><strong>Status:</strong> {{ spk.status }}</p>
         <p><strong>Keterangan:</strong> {{ spk.keterangan }}</p>
+        <div class="mt-3">
+            {% if spk.status == 'Approved' %}
+                <a href="{% url 'download_spk' spk.pk %}" class="btn btn-primary">Download SPK Excel</a>
+            {% endif %}
+            {% if spk.status == 'Draft' %}
+                <a href="{% url 'spk_approve' spk.pk %}" class="btn btn-success">Approve SPK</a>
+            {% endif %}
+        </div>
     </div>
 </div>
 

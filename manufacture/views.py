@@ -8,6 +8,7 @@ from datetime import datetime
 from openpyxl import Workbook
 from django.http import HttpResponse
 from django.db.models import Sum
+from decimal import Decimal
 
 def stasiunkerja_list(request):
     stasiunkers = StasiunKerja.objects.all()
@@ -391,20 +392,99 @@ def download_productionorder_template(request):
 
 def spk_list(request):
     spks = SuratPerintahKerja.objects.all()
-    return render(request, 'manufacture/spk_list.html', {'spks': spks})
+
+    # Handle filtering
+    id_spk_filter = request.GET.get('id_spk', '')
+    id_po_filter = request.GET.get('id_po', '')
+    tanggal_spk_filter = request.GET.get('tanggal_spk', '')
+    status_filter = request.GET.get('status', '')
+
+    if id_spk_filter:
+        spks = spks.filter(id_spk__icontains=id_spk_filter)
+    if id_po_filter:
+        spks = spks.filter(id_po__id_po__icontains=id_po_filter)
+    if tanggal_spk_filter:
+        spks = spks.filter(tanggal_spk=tanggal_spk_filter)
+    if status_filter:
+        spks = spks.filter(status=status_filter)
+
+    context = {
+        'spks': spks,
+        'id_spk_filter': id_spk_filter,
+        'id_po_filter': id_po_filter,
+        'tanggal_spk_filter': tanggal_spk_filter,
+        'status_filter': status_filter,
+    }
+    return render(request, 'manufacture/spk_list.html', context)
 
 def spk_create(request):
+    selected_po = request.POST.get('id_po') or request.GET.get('po')
+    po_details = None
+    if selected_po:
+        try:
+            po = ProductionOrder.objects.get(id_po=selected_po)
+            po_details = ProductionOrderDetail.objects.filter(id_po=po, qty_remaining__gt=0)
+        except ProductionOrder.DoesNotExist:
+            pass
+
     if request.method == 'POST':
         form = SuratPerintahKerjaForm(request.POST)
-        if form.is_valid():
-            spk = form.save()
-            # Generate SPK details and outputs
-            generate_spk_details(spk)
-            messages.success(request, 'SPK created successfully with generated details.')
-            return redirect('spk_detail', pk=spk.pk)
+        if 'allocations' in request.POST:
+            if form.is_valid():
+                spk = form.save()
+                # Process allocations
+                allocations = {}
+                for key, value in request.POST.items():
+                    if key.startswith('allocated_'):
+                        po_detail_id = key.split('_')[1]
+                        try:
+                            qty = Decimal(value)
+                            if qty > 0:
+                                allocations[int(po_detail_id)] = qty
+                        except ValueError:
+                            pass
+
+                # Validate allocations
+                for po_detail_id, qty in allocations.items():
+                    try:
+                        po_detail = ProductionOrderDetail.objects.get(pk=po_detail_id)
+                        if qty > po_detail.qty_remaining:
+                            messages.error(request, f'Allocated quantity {qty} exceeds remaining {po_detail.qty_remaining} for {po_detail.nama_product}')
+                            return redirect('spk_create')
+                    except ProductionOrderDetail.DoesNotExist:
+                        messages.error(request, 'Invalid PO detail')
+                        return redirect('spk_create')
+
+                # Update remaining and create SPK outputs
+                for po_detail_id, qty in allocations.items():
+                    po_detail = ProductionOrderDetail.objects.get(pk=po_detail_id)
+                    po_detail.qty_remaining -= qty
+                    po_detail.save()
+
+                    # Create SPKOutput
+                    SPKOutput.objects.create(
+                        id_spk=spk,
+                        id_po_detail=po_detail,
+                        id_product=po_detail.id_product,
+                        nama_product=po_detail.nama_product,
+                        qty_output=qty
+                    )
+
+                # Generate SPK details based on allocations
+                generate_spk_details(spk)
+                messages.success(request, 'SPK created successfully with allocated quantities.')
+                return redirect('spk_detail', pk=spk.pk)
     else:
-        form = SuratPerintahKerjaForm()
-    return render(request, 'manufacture/spk_form.html', {'form': form, 'title': 'Create SPK'})
+        initial = {}
+        if selected_po:
+            try:
+                po = ProductionOrder.objects.get(id_po=selected_po)
+                initial['id_po'] = po
+            except ProductionOrder.DoesNotExist:
+                pass
+        form = SuratPerintahKerjaForm(initial=initial)
+
+    return render(request, 'manufacture/spk_form.html', {'form': form, 'title': 'Create SPK', 'po_details': po_details})
 
 def spk_detail(request, pk):
     spk = get_object_or_404(SuratPerintahKerja, pk=pk)
@@ -420,18 +500,76 @@ def spk_delete(request, pk):
         return redirect('spk_list')
     return render(request, 'manufacture/spk_confirm_delete.html', {'spk': spk})
 
+def spk_approve(request, pk):
+    spk = get_object_or_404(SuratPerintahKerja, pk=pk)
+    if spk.status == 'Draft':
+        spk.status = 'Approved'
+        spk.save()
+        messages.success(request, f'SPK {spk.id_spk} has been approved.')
+    else:
+        messages.warning(request, f'SPK {spk.id_spk} is already approved.')
+    return redirect('spk_detail', pk=pk)
+
+def download_spk(request, pk):
+    spk = get_object_or_404(SuratPerintahKerja, pk=pk)
+    wb = Workbook()
+
+    # Get all stations for this SPK
+    stations = StasiunKerja.objects.filter(
+        id_stasiun_kerja__in=SPKDetail.objects.filter(id_spk=spk).values('id_stasiunkerja')
+    ).distinct()
+
+    for station in stations:
+        # Create sheet for each station
+        ws = wb.create_sheet(title=station.nama_stasiun_kerja[:31])  # Excel sheet name limit
+
+        # SPK Information
+        ws.append(['SPK Information'])
+        ws.append(['ID SPK', spk.id_spk])
+        ws.append(['ID PO', str(spk.id_po)])
+        ws.append(['Tanggal SPK', str(spk.tanggal_spk)])
+        ws.append(['Status', spk.status])
+        ws.append(['Keterangan', spk.keterangan])
+        ws.append([])  # Empty row
+
+        # Raw Material Requirements for this station
+        ws.append(['Kebutuhan Bahan Baku'])
+        ws.append(['Bahan Baku', 'Qty Kebutuhan', 'Satuan'])
+
+        station_details = SPKDetail.objects.filter(id_spk=spk, id_stasiunkerja=station)
+        for detail in station_details:
+            ws.append([detail.nama_rawmaterial, detail.qty_kebutuhan, detail.satuan])
+
+        ws.append([])  # Empty row
+
+        # Output Quantities for this station
+        ws.append(['Jumlah Output'])
+        ws.append(['Product', 'Qty Output'])
+
+        # Since SPKOutput no longer has station, list all outputs (they are per product)
+        outputs = SPKOutput.objects.filter(id_spk=spk)
+        for output in outputs:
+            ws.append([output.nama_product, output.qty_output])
+
+    # Remove default sheet if it exists
+    if 'Sheet' in wb.sheetnames:
+        wb.remove(wb['Sheet'])
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename=SPK_{spk.id_spk}.xlsx'
+    wb.save(response)
+    return response
+
 def generate_spk_details(spk):
-    po = spk.id_po
-    po_details = ProductionOrderDetail.objects.filter(id_po=po)
+    # Use SPKOutput to get allocated quantities
+    spk_outputs = SPKOutput.objects.filter(id_spk=spk)
 
     # Dictionary to accumulate raw material needs per station
     raw_material_needs = {}
-    # Set to collect unique stations per product
-    stations_per_product = {}
 
-    for po_detail in po_details:
-        product = po_detail.id_product
-        qty_produksi = po_detail.qty_produksi
+    for spk_output in spk_outputs:
+        product = spk_output.id_product
+        qty_allocated = spk_output.qty_output
 
         # Get BOM for the product
         bom = BOM.objects.filter(id_product=product).first()
@@ -443,7 +581,7 @@ def generate_spk_details(spk):
         for bom_detail in bom_details:
             station = bom_detail.id_stasiunkerja
             rawmaterial = bom_detail.id_rawmaterial
-            qty_needed = bom_detail.qty * qty_produksi
+            qty_needed = bom_detail.qty * qty_allocated
 
             key = (station.id_stasiun_kerja, rawmaterial.sku)
             if key not in raw_material_needs:
@@ -455,10 +593,6 @@ def generate_spk_details(spk):
                 }
             raw_material_needs[key]['qty'] += qty_needed
 
-            # Collect unique stations for this product
-            if product.sku not in stations_per_product:
-                stations_per_product[product.sku] = {'product': product, 'qty_produksi': qty_produksi, 'stations': set()}
-            stations_per_product[product.sku]['stations'].add(station)
 
     # Create SPKDetail instances
     for key, data in raw_material_needs.items():
@@ -471,17 +605,3 @@ def generate_spk_details(spk):
             qty_kebutuhan=data['qty'],
             satuan=data['satuan']
         )
-
-    # Create SPKOutput instances - each station produces the full qty_produksi for the product
-    for product_data in stations_per_product.values():
-        product = product_data['product']
-        qty_produksi = product_data['qty_produksi']
-        for station in product_data['stations']:
-            SPKOutput.objects.create(
-                id_spk=spk,
-                id_stasiunkerja=station,
-                nama_stasiunkerja=station.nama_stasiun_kerja,
-                id_product=product,
-                nama_product=product.name,
-                qty_output=qty_produksi
-            )

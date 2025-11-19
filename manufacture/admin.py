@@ -44,6 +44,6 @@ class SPKDetailAdmin(admin.ModelAdmin):
 
 @admin.register(SPKOutput)
 class SPKOutputAdmin(admin.ModelAdmin):
-    list_display = ('id_spk', 'nama_stasiunkerja', 'nama_product', 'qty_output')
-    list_filter = ('id_spk', 'id_stasiunkerja')
-    search_fields = ('nama_stasiunkerja', 'nama_product')
+    list_display = ('id_spk', 'nama_product', 'qty_output')
+    list_filter = ('id_spk',)
+    search_fields = ('nama_product',)

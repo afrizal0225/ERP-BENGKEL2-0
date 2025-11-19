@@ -39,6 +39,10 @@ class ProductionOrderDetailForm(forms.ModelForm):
         model = ProductionOrderDetail
         fields = '__all__'
 
+class AllocationForm(forms.Form):
+    po_detail_id = forms.IntegerField(widget=forms.HiddenInput)
+    allocated_qty = forms.DecimalField(max_digits=10, decimal_places=2, min_value=0)
+
 class SuratPerintahKerjaForm(forms.ModelForm):
     class Meta:
         model = SuratPerintahKerja
@@ -46,3 +50,10 @@ class SuratPerintahKerjaForm(forms.ModelForm):
         widgets = {
             'tanggal_spk': forms.DateInput(attrs={'type': 'date'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Filter POs that have details with remaining > 0
+        from .models import ProductionOrderDetail
+        po_with_remaining = ProductionOrderDetail.objects.filter(qty_remaining__gt=0).values_list('id_po', flat=True).distinct()
+        self.fields['id_po'].queryset = self.fields['id_po'].queryset.filter(id_po__in=po_with_remaining)

@@ -466,9 +466,9 @@ def keluar_rawmaterial_bulk_create(request):
                 sheet = wb.active
                 created_count = 0
                 for row in sheet.iter_rows(min_row=2, values_only=True):
-                    if len(row) < 8:
+                    if len(row) < 7:
                         continue
-                    id_keluar, tanggal_keluar_str, BRAND, sku_rawmaterial, Nama_rawmaterial, quantity, harga_satuan, kategori = row[:8]
+                    id_keluar, tanggal_keluar_str, BRAND, sku_rawmaterial, Nama_rawmaterial, quantity, kategori = row[:7]
                     try:
                         tanggal_keluar = datetime.strptime(tanggal_keluar_str, '%Y-%m-%d').date()
                         try:
@@ -490,8 +490,6 @@ def keluar_rawmaterial_bulk_create(request):
                             id_rawmaterial=rawmaterial,
                             Nama_rawmaterial=Nama_rawmaterial,
                             quantity=int(quantity),
-                            harga_satuan=float(harga_satuan),
-                            harga_total=int(quantity) * float(harga_satuan),
                             kategori=kategori
                         )
                         created_count += 1
@@ -518,8 +516,6 @@ def keluar_rawmaterial_detail_create(request, pk):
         id_rawmaterial_id = request.POST.get('id_rawmaterial')
         Nama_rawmaterial = request.POST.get('Nama_rawmaterial')
         quantity = int(request.POST.get('quantity'))
-        harga_satuan = float(request.POST.get('harga_satuan'))
-        harga_total = quantity * harga_satuan
         kategori = request.POST.get('kategori')
         rawmaterial = get_object_or_404(RawMaterial, pk=id_rawmaterial_id)
         KeluarRawMaterialDetail.objects.create(
@@ -529,8 +525,6 @@ def keluar_rawmaterial_detail_create(request, pk):
             id_rawmaterial=rawmaterial,
             Nama_rawmaterial=Nama_rawmaterial,
             quantity=quantity,
-            harga_satuan=harga_satuan,
-            harga_total=harga_total,
             kategori=kategori
         )
         messages.success(request, 'Detail added successfully.')
@@ -555,9 +549,9 @@ def download_keluar_rawmaterial_template(request):
     wb = Workbook()
     ws = wb.active
     ws.title = "Keluar Raw Material Details"
-    headers = ['ID Keluar', 'Tanggal Keluar', 'BRAND', 'SKU Raw Material', 'Nama Raw Material', 'Quantity', 'Harga Satuan', 'Kategori']
+    headers = ['ID Keluar', 'Tanggal Keluar', 'BRAND', 'SKU Raw Material', 'Nama Raw Material', 'Quantity', 'Kategori']
     ws.append(headers)
-    ws.append(['KLR001', '2025-01-01', 'Brand X', 'RM001', 'Sample Raw Material', '5', '20.00', 'Category A'])
+    ws.append(['KLR001', '2025-01-01', 'Brand X', 'RM001', 'Sample Raw Material', '5', 'Category A'])
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = 'attachment; filename=keluar_rawmaterial_template.xlsx'
     wb.save(response)

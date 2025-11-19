@@ -32,5 +32,7 @@ urlpatterns = [
     path('spk/', views.spk_list, name='spk_list'),
     path('spk/create/', views.spk_create, name='spk_create'),
     path('spk/<str:pk>/detail/', views.spk_detail, name='spk_detail'),
+    path('spk/<str:pk>/approve/', views.spk_approve, name='spk_approve'),
+    path('spk/<str:pk>/download/', views.download_spk, name='download_spk'),
     path('spk/<str:pk>/delete/', views.spk_delete, name='spk_delete'),
 ]

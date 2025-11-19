@@ -58,6 +58,7 @@ class ProductionOrderDetail(models.Model):
     size = models.CharField(max_length=50)
     warna = models.CharField(max_length=50)
     qty_produksi = models.DecimalField(max_digits=10, decimal_places=2)
+    qty_remaining = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     keterangan = models.TextField(blank=True)
 
     def __str__(self):
@@ -66,11 +67,20 @@ class ProductionOrderDetail(models.Model):
     class Meta:
         unique_together = ('id_po', 'id_product')
 
+@receiver(pre_save, sender=ProductionOrderDetail)
+def set_productionorderdetail_remaining(sender, instance, **kwargs):
+    if instance.qty_remaining == 0 and instance.qty_produksi > 0:
+        instance.qty_remaining = instance.qty_produksi
+
 class SuratPerintahKerja(models.Model):
+    STATUS_CHOICES = [
+        ('Draft', 'Draft'),
+        ('Approved', 'Approved'),
+    ]
     id_spk = models.CharField(max_length=50, primary_key=True)
     id_po = models.ForeignKey(ProductionOrder, on_delete=models.CASCADE)
     tanggal_spk = models.DateField()
-    status = models.CharField(max_length=50, default='Draft')
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='Draft')
     keterangan = models.TextField(blank=True)
 
     def __str__(self):
@@ -90,8 +100,7 @@ class SPKDetail(models.Model):
 
 class SPKOutput(models.Model):
     id_spk = models.ForeignKey(SuratPerintahKerja, on_delete=models.CASCADE)
-    id_stasiunkerja = models.ForeignKey(StasiunKerja, on_delete=models.CASCADE)
-    nama_stasiunkerja = models.CharField(max_length=200, blank=True)
+    id_po_detail = models.ForeignKey(ProductionOrderDetail, on_delete=models.CASCADE, null=True, blank=True)
     id_product = models.ForeignKey(Product, on_delete=models.CASCADE)
     nama_product = models.CharField(max_length=200)
     qty_output = models.DecimalField(max_digits=10, decimal_places=2)

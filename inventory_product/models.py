@@ -117,9 +117,14 @@ class KeluarRawMaterialDetail(models.Model):
     id_rawmaterial = models.ForeignKey('product.RawMaterial', on_delete=models.CASCADE)
     Nama_rawmaterial = models.CharField(max_length=200)
     quantity = models.PositiveIntegerField()
-    harga_satuan = models.DecimalField(max_digits=10, decimal_places=2)
-    harga_total = models.DecimalField(max_digits=10, decimal_places=2)
+    harga_satuan = models.DecimalField(max_digits=10, decimal_places=2, default=0, editable=False)
+    harga_total = models.DecimalField(max_digits=10, decimal_places=2, default=0, editable=False)
     kategori = models.CharField(max_length=100)
+
+    def save(self, *args, **kwargs):
+        self.harga_satuan = self.id_rawmaterial.price
+        self.harga_total = self.quantity * self.harga_satuan
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.id_keluar} - {self.Nama_rawmaterial}"
