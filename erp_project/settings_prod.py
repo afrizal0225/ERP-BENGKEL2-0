@@ -2,8 +2,8 @@ from .settings import *
 
 # Override production settings
 DEBUG = False
-SECRET_KEY = os.environ.get('SECRET_KEY')
-ALLOWED_HOSTS = ['your-railway-app-name.up.railway.app']
+SECRET_KEY = os.environ.get('4a5fi7063jinwx46r45e1kuechph0t4oyn6omdc59pslxmmew8')
+ALLOWED_HOSTS = ['erp-bengkel2-0-production.up.railway.app']
 
 # Database
 DATABASES = {
