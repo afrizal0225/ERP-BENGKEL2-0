@@ -8,7 +8,7 @@ ALLOWED_HOSTS = ['your-railway-app-name.up.railway.app']
 # Database
 DATABASES = {
     'default': dj_database_url.config(
-        default=os.environ.get('DATABASE_URL'),
+        default=os.environ.get('postgresql://postgres:hHqoKXOxBuqJhwDQBOWIwxmvtIcdCYdO@postgres.railway.internal:5432/railway'),
         conn_max_age=600,
         conn_health_checks=True,
     )
