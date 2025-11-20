@@ -46,6 +46,24 @@
         <h5>SPK Progress per Workstation</h5>
     </div>
     <div class="card-body">
+        <!-- Filter Form -->
+        <div class="mb-3">
+            <form method="get" class="d-flex align-items-center flex-wrap">
+                <label for="workstation" class="form-label me-2 mb-0">Workstation:</label>
+                <select name="workstation" id="workstation" class="form-select me-3" style="width: auto;">
+                    <option value="">All Workstations</option>
+                    {% for ws in workstations %}
+                    <option value="{{ ws.nama_stasiun_kerja }}" {% if ws.nama_stasiun_kerja == workstation_filter %}selected{% endif %}>{{ ws.nama_stasiun_kerja }}</option>
+                    {% endfor %}
+                </select>
+                <label for="spk_id" class="form-label me-2 mb-0">SPK ID:</label>
+                <input type="text" name="spk_id" id="spk_id" class="form-control me-3" style="width: 150px;" placeholder="Enter SPK ID" value="{{ spk_filter }}">
+                <button type="submit" class="btn btn-primary me-2">Filter</button>
+                {% if workstation_filter or spk_filter %}
+                <a href="{% url 'manufacture_dashboard' %}" class="btn btn-secondary">Clear Filters</a>
+                {% endif %}
+            </form>
+        </div>
         <div class="table-responsive">
             <table class="table table-striped">
                 <thead>

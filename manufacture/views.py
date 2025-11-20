@@ -703,6 +703,10 @@ def productionprogress_delete(request, pk):
     return render(request, 'manufacture/productionprogress_confirm_delete.html', {'progress': progress})
 
 def manufacture_dashboard(request):
+    # Handle filters
+    workstation_filter = request.GET.get('workstation', '')
+    spk_filter = request.GET.get('spk_id', '')
+
     # Get POs with remaining quantities (calculated as total PO output - total approved SPK outputs)
     pos_with_remaining = []
     all_pos = ProductionOrder.objects.all()
@@ -760,13 +764,25 @@ def manufacture_dashboard(request):
             'percentage': round(percentage, 2)
         })
 
+    # Apply filters
+    if workstation_filter:
+        progress_data = [p for p in progress_data if p['station_name'] == workstation_filter]
+    if spk_filter:
+        progress_data = [p for p in progress_data if spk_filter.lower() in p['spk_id'].lower()]
+
     # Get SPK details for context
     spks = SuratPerintahKerja.objects.filter(status='Approved').select_related('id_po')
+
+    # Get all workstations for filter dropdown
+    workstations = StasiunKerja.objects.all()
 
     context = {
         'pos_with_remaining': pos_with_remaining,
         'spk_progress': progress_data,
         'spks': spks,
+        'workstation_filter': workstation_filter,
+        'spk_filter': spk_filter,
+        'workstations': workstations,
     }
     return render(request, 'manufacture/dashboard.html', context)
 
