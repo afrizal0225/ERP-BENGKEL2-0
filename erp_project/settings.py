@@ -12,6 +12,9 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 from environ import Env
+import dj_database_url
+
+
 env = Env()
 Env.read_env()
 ENVIRONMENT= env('ENVIRONMENT', default='production')
@@ -35,7 +38,12 @@ else:
     DEBUG = False
 
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+if ENVIRONMENT == 'development':
+    DEBUG = True
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+else:
+    DEBUG = False
+    ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['yourdomain.com'])
 
 
 # Application definition
@@ -92,6 +100,11 @@ DATABASES = {
     }
 }
 
+if ENVIRONMENT != 'development':
+    DATABASES['default'] = dj_database_url.config(default=env('DATABASE_URL'))
+    MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+    ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['your-railway-app.railway.app'])
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -128,8 +141,13 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+
