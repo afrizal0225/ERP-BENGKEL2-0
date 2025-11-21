@@ -2,7 +2,8 @@
   "build": {
     "builder": "NIXPACKS"
   },
-  "deploy": {
+   "deploy": {
+    "preDeployCommand": "python manage.py migrate --noinput && python manage.py collectstatic --noinput",
     "startCommand": "gunicorn erp_project.wsgi:application --bind 0.0.0.0:$PORT"
   }
 }
