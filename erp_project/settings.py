@@ -43,7 +43,7 @@ if ENVIRONMENT == 'development':
     ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 else:
     DEBUG = False
-    ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['yourdomain.com'])
+    ALLOWED_HOSTS = env.str('ALLOWED_HOSTS', default='your-railway-app.railway.app').split(',')
 
 
 # Application definition
@@ -100,11 +100,11 @@ DATABASES = {
     }
 }
 
-if ENVIRONMENT != 'development':
-    DATABASES['default'] = dj_database_url.config(default=env('DATABASE_URL'))
-    MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
-    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-    ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['your-railway-app.railway.app'])
+if ENVIRONMENT == 'production':
+    try:
+        DATABASES['default'] = dj_database_url.config(default=env('DATABASE_URL'))
+    except:
+        pass
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
