@@ -14,12 +14,9 @@ from pathlib import Path
 from environ import Env
 import dj_database_url
 
-
 env = Env()
 Env.read_env()
-ENVIRONMENT= env('ENVIRONMENT', default='production')
-
-
+ENVIRONMENT = env('ENVIRONMENT', default='development')
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -32,18 +29,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = env('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-if ENVIRONMENT == 'development':
-    DEBUG = True
-else:
-    DEBUG = False
-
+DEBUG = ENVIRONMENT == 'development'
 
 if ENVIRONMENT == 'development':
-    DEBUG = True
     ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 else:
-    DEBUG = False
-    ALLOWED_HOSTS = env.str('ALLOWED_HOSTS', default='your-railway-app.railway.app').split(',')
+    ALLOWED_HOSTS = env.str('ALLOWED_HOSTS', default='*').split(',')
 
 
 # Application definition
@@ -62,13 +53,20 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+]
+
+# Add whitenoise for production
+if ENVIRONMENT == 'production':
+    MIDDLEWARE.append('whitenoise.middleware.WhiteNoiseMiddleware')
+
+MIDDLEWARE.extend([
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-]
+])
 
 ROOT_URLCONF = 'erp_project.urls'
 
@@ -93,18 +91,23 @@ WSGI_APPLICATION = 'erp_project.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
-
 if ENVIRONMENT == 'production':
-    try:
-        DATABASES['default'] = dj_database_url.config(default=env('DATABASE_URL'))
-    except:
-        pass
+    # Railway automatically provides DATABASE_URL
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=env('DATABASE_URL'),
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
+    }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -143,11 +146,11 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+if ENVIRONMENT == 'production':
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-
-
