@@ -33,10 +33,25 @@ DEBUG = ENVIRONMENT == 'development'
 
 if ENVIRONMENT == 'development':
     ALLOWED_HOSTS = ['localhost', '127.0.0.1']
-    DEBUG == True
+    DEBUG = True
 else:
-    ALLOWED_HOSTS = env.str('ALLOWED_HOSTS', default='*').split(',')
+    # Production settings
+    RAILWAY_DOMAIN = env('RAILWAY_PUBLIC_DOMAIN', default='')
+    
+    if RAILWAY_DOMAIN:
+        ALLOWED_HOSTS = [RAILWAY_DOMAIN]
+        CSRF_TRUSTED_ORIGINS = [f'https://{RAILWAY_DOMAIN}']
+    else:
+        ALLOWED_HOSTS = env.str('ALLOWED_HOSTS', default='*').split(',')
+    
     DEBUG = False
+    
+    # Security settings untuk HTTPS
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 
 # Application definition
 
