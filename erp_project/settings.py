@@ -33,9 +33,10 @@ DEBUG = ENVIRONMENT == 'development'
 
 if ENVIRONMENT == 'development':
     ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+    DEBUG == True
 else:
     ALLOWED_HOSTS = env.str('ALLOWED_HOSTS', default='*').split(',')
-
+    DEBUG = False
 
 # Application definition
 
